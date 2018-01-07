@@ -1,0 +1,7 @@
+[user]
+	name = Ubuntu
+	email = shinahara@human.ait.kyushu-u.ac.jp
+[color]
+	diff = auto
+	status = auto
+	branch = auto
