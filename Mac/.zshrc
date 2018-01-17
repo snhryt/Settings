@@ -4,30 +4,30 @@ export LANG=ja_JP.UTF-8
 
 # パス
 # zsh
-export fpath=(/usr/local/share/zsh-completions $fpath)
+# export fpath=(/usr/local/share/zsh-completions $fpath)
 
 # Homebrew
-export PATH="/usr/local/bin:$PATH"
-#export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
+# export PATH="/usr/local/bin:$PATH"
+# export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
 
 # tex
-export PATH=$PATH:/Library/TeX/texbin
+# export PATH=$PATH:/Library/TeX/texbin
 
 # python
 # export PYTHONPATH="/usr/local/lib/python3.6/site-packages/:$PYTHONPATH"
-export PYENV_ROOT=${HOME}/.pyenv
-if [ -d "${PYENV_ROOT}" ]; then
-    export PATH=${PYENV_ROOT}/bin:$PATH
-    export PATH=${PYENV_ROOT}/shims:$PATH
-    eval "$(pyenv init -)"
-fi
+# export PYENV_ROOT=${HOME}/.pyenv
+# if [ -d "${PYENV_ROOT}" ]; then
+#     export PATH=${PYENV_ROOT}/bin:$PATH
+#     export PATH=${PYENV_ROOT}/shims:$PATH
+#     eval "$(pyenv init -)"
+# fi
 
 # 色を使用出来るようにする
 autoload -Uz colors
 colors
 
 # emacs 風キーバインドにする
-#bindkey -e
+# bindkey -e
 
 # ヒストリの設定
 HISTFILE=~/.zsh_history
@@ -55,8 +55,8 @@ zstyle ':zle:*' word-style unspecified
 ########################################
 # 補完
 # 補完機能を有効にする
-autoload -Uz compinit
-compinit
+# autoload -Uz compinit
+# compinit
 
 # 補完で小文字でも大文字にマッチさせる
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
@@ -173,8 +173,6 @@ elif which putclip >/dev/null 2>&1 ; then
     alias -g C='| putclip'
 fi
 
-
-
 ########################################
 # OS 別の設定
 case ${OSTYPE} in
@@ -189,3 +187,51 @@ case ${OSTYPE} in
 esac
 
 # vim:set ft=zsh:
+
+########################################
+# percol
+# https://qiita.com/bird_tummy/items/bd063f0d7eb18287fec1
+
+# {{{
+# cd 履歴を記録
+typeset -U chpwd_functions
+CD_HISTORY_FILE=${HOME}/.cd_history_file # cd 履歴の記録先ファイル
+function chpwd_record_history() {
+    echo $PWD >> ${CD_HISTORY_FILE}
+}
+chpwd_functions=($chpwd_functions chpwd_record_history)
+
+# percol を使って cd 履歴の中からディレクトリを選択
+# 過去の訪問回数が多いほど選択候補の上に来る
+function percol_get_destination_from_history() {
+    sort ${CD_HISTORY_FILE} | uniq -c | sort -r | \
+        sed -e 's/^[ ]*[0-9]*[ ]*//' | \
+        sed -e s"/^${HOME//\//\\/}/~/" | \
+        percol | xargs echo
+}
+
+# percol を使って cd 履歴の中からディレクトリを選択し cd するウィジェット
+function percol_cd_history() {
+    local destination=$(percol_get_destination_from_history)
+    [ -n $destination ] && cd ${destination/#\~/${HOME}}
+    zle reset-prompt
+}
+zle -N percol_cd_history
+
+# percol を使って cd 履歴の中からディレクトリを選択し，現在のカーソル位置に挿入するウィジェット
+function percol_insert_history() {
+    local destination=$(percol_get_destination_from_history)
+    if [ $? -eq 0 ]; then
+        local new_left="${LBUFFER} ${destination} "
+        BUFFER=${new_left}${RBUFFER}
+        CURSOR=${#new_left}
+    fi
+    zle reset-prompt
+}
+zle -N percol_insert_history
+# }}}
+
+# C-x ; でディレクトリに cd
+# C-x i でディレクトリを挿入
+bindkey '^x;' percol_cd_history
+bindkey '^xi' percol_insert_history
