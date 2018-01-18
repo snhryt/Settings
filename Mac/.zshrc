@@ -2,9 +2,8 @@
 # 環境変数
 export LANG=ja_JP.UTF-8
 
+########################################
 # パス
-# zsh
-# export fpath=(/usr/local/share/zsh-completions $fpath)
 
 # Homebrew
 # export PATH="/usr/local/bin:$PATH"
@@ -13,7 +12,7 @@ export LANG=ja_JP.UTF-8
 # tex
 # export PATH=$PATH:/Library/TeX/texbin
 
-# python
+# Python
 # export PYTHONPATH="/usr/local/lib/python3.6/site-packages/:$PYTHONPATH"
 # export PYENV_ROOT=${HOME}/.pyenv
 # if [ -d "${PYENV_ROOT}" ]; then
@@ -22,6 +21,7 @@ export LANG=ja_JP.UTF-8
 #     eval "$(pyenv init -)"
 # fi
 
+########################################
 # 色を使用出来るようにする
 autoload -Uz colors
 colors
@@ -43,7 +43,6 @@ SPROMPT="%{$fg[cyan]%}correct: %R -> %r [nyae]? %{$reset_color%}"
 #PROMPT2="%{$fg[green]%}%_> %{$reset_color%}"
 #RPROMPT="%{$fg[cyan]%}[%~]%{$reset_color%}"
 
-
 # 単語の区切り文字を指定する
 autoload -Uz select-word-style
 select-word-style default
@@ -54,9 +53,10 @@ zstyle ':zle:*' word-style unspecified
 
 ########################################
 # 補完
-# 補完機能を有効にする
-# autoload -Uz compinit
-# compinit
+# zsh-completions による補完機能を有効にする
+fpath=(/usr/local/share/zsh-completions $fpath)
+autoload -U compinit
+compinit -u
 
 # 補完で小文字でも大文字にマッチさせる
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
