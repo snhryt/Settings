@@ -22,5 +22,19 @@
     
     "[python]": {
       "editor.tabSize": 4
-    }
+    },
+
+    "latex-workshop.latex.toolchain": [
+      {
+          "command": "latexmk",
+          "args": [
+              "-latex=uplatex",
+              "-synctex=1",
+              "-interaction=nonstopmode",
+              "-file-line-error",
+              "-pdfdvi",
+              "%DOC%"
+          ]
+      }
+    ]
 }
