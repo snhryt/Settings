@@ -1,8 +1,292 @@
 import os
 import shutil
 import random
+import csv
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import cv2
+from contextlib import contextmanager
 from tqdm import tqdm_notebook, tnrange
+
+def extension(path):
+    """ Get file extesnion.
+    Args
+    -------
+    path: (str)
+        Path of file or directory.
+    Returns
+    -------
+    (str) File extension. If 'path' indicates directory, returns ''.
+    """
+    return os.path.splitext(path)[1]
+
+
+def isImage(filepath):
+    """ Judge whether a file is image or not.
+    Args
+    -------
+    filepath: (str)
+    Returns
+    -------
+    (bool) If the extension of file is '.png', '.jpg', or etc., return True.
+    Otherwise return False.
+    """
+    img_exts = {'.bmp', 'dib', '.jpg', '.jpeg', '.png', '.ras', '.sr', '.tif', '.tiff'}
+    if extension(filepath) in img_exts:
+        return True
+    else:
+        return False
+
+
+def splitTextLine(line, delimiter=' ', split_num=None):
+    """ Split a text line into more than two strings. E.g.,
+    * line = '<A> <B> <C>\\n'
+    * delimiter = ' '
+    * split_num = 1 \n
+    then, this function returns a list: ['<A>', '<B> <C>'].
+    Args
+    -------
+    line: (str)
+        Text line (including '\\n').
+    delimiter: (str), optional
+        Delimiter.
+    split_num: (int), optional
+        The number of strings split by 'delimiter'.
+    Returns
+    -------
+    (list of str) Split strings (without '\\n').
+    """
+    if split_num:
+        strings = line.split(delimiter, split_num)
+    else:
+        strings = line.split(delimiter)
+    strings[-1] = strings[-1].split('\n')[0]
+    return strings
+
+
+def storeFilepaths(dirpath, skip_hidden_dir=True, necessary_exts=None, necessary_string=None):
+    """ Store filepaths.
+    Args
+    -------
+    dirpath: (str)
+        Directory path.
+    skip_hidden_dir: (bool), optional
+        Whether skip hidden directory (e.g. '.vscode') or not.
+    necessary_exts: (dict of str or list of str), optional
+        Only store filepaths which have specific file extensions in 'necessary_exts'.
+    necessary_string: (str), optional
+        Only store filepaths whose filenames include this string.
+    Returns
+    -------
+    (list of str) Filepaths in 'dirpath'.
+    """
+    filepaths = []
+    for root, dirnames, filenames in os.walk(dirpath):
+        for filename in filenames:
+            stem, ext = os.path.splitext(filename)
+            if skip_hidden_dir and '.' in root:
+                continue
+            if necessary_exts and not ext in necessary_exts:
+                continue
+            if necessary_string and not necessary_string in stem:
+                continue
+            filepath = os.path.join(root, filename)
+            filepaths.append(filepath)
+    return filepaths
+
+
+def showSingleImage(img, title=None):
+    """ Show a image.
+    """
+    if len(img.shape) == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        plt.imshow(img)
+    else:
+        plt.imshow(img, cmap='Greys_r')
+    if title:
+        plt.title(title)
+    plt.show()
+
+
+@contextmanager
+def showProcessingTime():
+    """ Show processing time.
+    """
+    import time
+
+    start = time.time()
+    yield
+    processing_time = time.time() - start
+    if processing_time < 60 * 2:
+        print('\n** Processing time: {:.5f} s\n'.format(processing_time))
+    elif processing_time < 60 * 60:
+        minutes = int(processing_time / 60)
+        print('\n** Processing time: {} m\n'.format(minutes))
+    else:
+        hours = int(processing_time / (60 * 60))
+        minutes = int( (processing_time - (hours * 60 * 60)) / 60 )
+        print('\n** Processing time: {0} h, {1} m\n'.format(hours, minutes))
+
+
+def storeBinaryImage(img_filepath):
+    """ Store binary image.
+    Args
+    -------
+    img_filepath: (str)
+        Image filepath.
+    Returns
+    -------
+    (ndarray of uint8) Binary image.
+    Raises
+    -------
+    FileNotFoundError: 
+        When 'img_filepath' is not found.
+    ValueError: 
+        When 'img_filepath' is not image file.
+    """
+    if not os.path.exists(img_filepath):
+        raise FileNotFoundError('"{}" is not found.'.format(img_filepath))
+    elif not isImage(img_filepath):
+        raise ValueError('"{}" is not image.'.format(os.path.basename(img_filepath)))
+    gray_img = cv2.imread(img_filepath, cv2.IMREAD_GRAYSCALE)
+    return cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+
+
+def getHighestProbClassIndex(probs, N=1):
+    """ Get an index of class which has the highest probability.
+    Args
+    -------
+    probs: (ndarray of float)
+        1D array which consists of probabilities (or likelihoods). The shape is (#classes).
+    N: (int), optional
+        Get the N th highest class index.
+    Returns
+    -------
+    (int) Index of class which has the N th highest probability.
+    """
+    return probs.argsort()[::-1][N - 1]
+
+
+def buildModel(json_filepath, weights_filepath=None):
+    """ Build a neural network model from json file.
+    Args
+    -------
+    json_filepath: (str)
+        .json filepath in which the model architecture is written.
+    weigths_filepath: (str), optional
+        .hdf5 filepath in which the trained model weights are written.
+    Returns
+    -------
+    (Keras object) Neural network model.
+    Raises
+    -------
+    FileNotFoundError: 
+        When json file is not found.
+    """
+    from keras.models import model_from_json
+
+    if not os.path.isfile(json_filepath):
+        raise FileNotFoundError('No such file: "{}"'.format(json_filepath))
+
+    json_model = open(json_filepath).read()
+    model = model_from_json(json_model)
+    if weights_filepath:
+        model.load_weights(weights_filepath)
+    return model
+
+
+def storeSingleImageShaped4Keras(filepath, color='gray', flip=False):
+    """ Store an image and reshape it for Keras having TensorFlow backend.
+    Args
+    -------
+    filepath: (str)
+        Image filepath.
+    color: (str, {'color', 'gray', 'bin'}), optional
+        Image color.
+    flip: (bool), optional
+        This option works only when "color" = 'bin'.
+        If this is True, flip pixel values (i.e., pixel value 0 -> 255, and vice versa).
+    Returns
+    -------
+    (ndarray of uint8) 3D array of an image. The shape is (height, width, 1 or 3).
+    Raises
+    -------
+    ValueError: 
+        When "color" is not one of {'color', 'gray', 'bin'}.
+        And when "filepath" does not indicate an image.
+    """
+    if not color in {'color', 'gray', 'bin'}:
+        raise ValueError('color must be "color", "gray", or "bin"')
+    if not isImage(filepath):
+        raise ValueError(
+            'filepath must be an image, but its extension is "{}"'.format(extension(filepath))
+        )
+
+    if color == 'color':
+        img = cv2.imread(filepath)
+    else:
+        img = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+        if color == 'bin':
+            img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1]
+            if flip:
+                img = 255 - img
+        img = img[:, :, np.newaxis]
+    return img
+
+
+def storeMultiImagesShaped4Keras(path, color='gray', flip=False, need_filenames=False,
+                                 filepath_pos=0):
+    """ Store images and reshape them for Keras having TensorFlow backend.
+    Args
+    -------
+    path: (str)
+        Path of a directory including images or of a .txt file in which is written image filepaths.
+    color: (str, {'color', 'gray', 'bin'}), optional
+        Image color.
+    flip: (bool), optional
+        This option works only when "color" = 'bin'.
+        If this is True, flip pixel values (i.e., pixel value 0 -> 255, and vice versa).
+    need_filenames: (bool), optional
+        If this is True, this function resturns a list of image filenames in addition to an array of images.
+    filepath_pos: (int), optional
+        This option works only when the extension of "path" is '.txt'.
+        Position of filepath in text lines.
+    Returns
+    -------
+    imgs: (ndarray of uint8)
+        4D array of images. The shapes is (#images, height, width, 1 or 3).
+    filenames: (list of str), optional
+        A list of image filenames. The length is same as the number or images.
+    Raises
+    -------
+    ValueError: 
+        When "color" is not one of {'color', 'gray', 'bin'}.
+        And when "path" does not indicate a directory or .txt file.
+    """
+    if not color in {'color', 'gray', 'bin'}:
+        raise ValueError('color must be "color", "gray", or "bin"')
+
+    imgs = []
+    filenames = []
+    if os.path.isdir(path):
+        filepaths = storeFilepaths(path)
+        for filepath in filepaths:
+            img = storeSingleImageShaped4Keras(filepath, color=color, flip=flip)
+            imgs.append(img)
+            filenames.append(os.path.basename(filepath))
+    elif extension(path) == '.txt':
+        with open(path) as f:
+            lines = f.readlines()
+        for line in lines:
+            filepath = splitTextLine(line)[filepath_pos]
+            img = storeSingleImageShaped4Keras(filepath, color=color, flip=flip)
+            imgs.append(img)
+            filenames.append(os.path.basename(filepath))
+    else:
+        raise ValueError('path must indicate a directory or a .txt file')
+
+    if need_filenames:
+        return np.array(imgs), filenames
+    else:
+        return np.array(imgs)
