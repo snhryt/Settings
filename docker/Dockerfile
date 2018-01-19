@@ -33,7 +33,7 @@ ENV PATH "${PYENV_ROOT}/bin:${PATH}"
 RUN pyenv init -
 
 # Anaconda
-ARG CONDA_VERSION="anaconda3-5.0.1"
+ARG CONDA_VERSION="anaconda3-5.0.0"
 RUN pyenv install ${CONDA_VERSION} \
     && pyenv global ${CONDA_VERSION}
 ENV PATH "${PYENV_ROOT}/versions/${CONDA_VERSION}/bin:${PATH}"
