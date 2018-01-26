@@ -100,6 +100,8 @@ export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 # export PATH="$PYENV_ROOT/versions/anaconda3-5.0.1/bin:$PATH"
 
+# Alias for miss type of docker
+alias dokcer="docker"
 
 # `ls` options
 export LSCOLORS=exfxcxdxbxegedabagacad
