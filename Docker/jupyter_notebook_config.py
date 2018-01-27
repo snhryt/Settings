@@ -15,19 +15,17 @@
 import os
 from IPython.lib import passwd
 
+c = c  # pylint:disable=undefined-variable
 c.NotebookApp.ip = '*'
 c.NotebookApp.port = int(os.getenv('PORT', 8888))
 c.NotebookApp.open_browser = False
-c.NotebookApp.iopub_data_rate_limit = 10000000
-
-password = ''
 
 # sets a password if PASSWORD is set in the environment
-if 'HASHED_PASSWORD' in os.environ:
-  password = os.environ['HASHED_PASSWORD']
-  del os.environ['HASHED_PASSWORD']
-elif 'PASSWORD' in os.environ:
-  password = passwd(os.environ['PASSWORD'])
+if 'PASSWORD' in os.environ:
+  password = os.environ['PASSWORD']
+  if password:
+    c.NotebookApp.password = passwd(password)
+  else:
+    c.NotebookApp.password = ''
+    c.NotebookApp.token = ''
   del os.environ['PASSWORD']
-if not password == '':
-  c.NotebookApp.password = password
