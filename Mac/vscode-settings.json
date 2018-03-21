@@ -13,28 +13,48 @@
     "editor.minimap.enabled": false,
     "editor.dragAndDrop": true,
     "editor.renderControlCharacters": true,
+
     "window.restoreFullscreen": true,
     "window.title": "${dirty}${activeEditorMedium}${separator}${rootName}${separator}${appName}",
     "window.zoomLevel": 0,
+
     "workbench.startupEditor": "newUntitledFile",
     "extensions.ignoreRecommendations": false,
     "git.confirmSync": false,
-    
+    "team.showWelcomeMessage": false,
+    "explorer.confirmDelete": false,
+
     "[python]": {
       "editor.tabSize": 4
     },
+    "python.disablePromptForFeatures": [
+      "pylint"
+    ],
 
     "latex-workshop.latex.toolchain": [
       {
-          "command": "latexmk",
-          "args": [
-              "-latex=uplatex",
-              "-synctex=1",
-              "-interaction=nonstopmode",
-              "-file-line-error",
-              "-pdfdvi",
-              "%DOC%"
-          ]
+        "command": "ptex2pdf",
+        "args": [
+          "-e",
+          "-l",
+          "-ot",
+          "-synctex=1",
+          "-od",
+          "-f ptex-ipaex.map",
+          "%DOC%"
+        ]
       }
-    ]
-}
+      // {
+      //   "command": "latexmk",
+      //   "args": [
+      //       "-latex=uplatex",
+      //       "-synctex=1",
+      //       "-interaction=nonstopmode",
+      //       "-file-line-error",
+      //       "-pdfdvi",
+      //       "%DOC%"
+      //   ]
+      // }
+    ],
+    "editor.multiCursorModifier": "ctrlCmd"
+  }
